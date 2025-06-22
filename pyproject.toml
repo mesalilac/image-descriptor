@@ -1,0 +1,13 @@
+[project]
+name = "image-descriptor"
+version = "0.1.0"
+description = "Image Descriptor"
+readme = "README.md"
+dependencies = [
+    "Pillow",
+    "transformers",
+    "torch",
+    "torchvision",
+    "tqdm",
+    "blake3",
+]
