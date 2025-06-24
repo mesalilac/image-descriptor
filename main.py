@@ -18,9 +18,7 @@ from transformers import (
 
 # Initialize models (will download on first run)
 blip_model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b")
-blip_processor = Blip2Processor.from_pretrained(
-    "Salesforce/blip2-opt-2.7b", use_fast=True
-)
+blip_processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
 
 clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14")
 clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14")
@@ -79,10 +77,10 @@ def classify_category(image):
     similarity = torch.matmul(image_features, text_features.T)
     # category_idx = similarity.argmax().item()
     # category_idx = max_idx.item()
-    max_score, max_idx = torch.max(similarity, dim=0)
+    max_score, max_idx = torch.max(similarity, dim=1)
 
     threshold = 0.3
-    if max_score < threshold:
+    if max_score.item() < threshold:
         return "uncategorized"
     else:
         # return categories[category_idx]
