@@ -23,9 +23,7 @@ blip_processor = Blip2Processor.from_pretrained(
 )
 
 clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14")
-clip_processor = CLIPProcessor.from_pretrained(
-    "openai/clip-vit-large-patch14", use_fast=True
-)
+clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14")
 
 # Define your own categories
 categories = [
