@@ -120,7 +120,7 @@ def save_unique_metadata(new_items, json_path):
 def sanitize_filename(text: str, max_length=60):
     text = text.lower().strip()
     text = re.sub(r"[^\w\s-]", "", text)  # Remove special chars
-    text = re.sub(r"[\s_]+", "_", text)  # Convert spaces to underscores
+    # text = re.sub(r"[\s_]+", "_", text)  # Convert spaces to underscores
     return text[:max_length]
 
 
