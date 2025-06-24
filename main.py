@@ -15,12 +15,17 @@ from transformers import (
     CLIPModel,
 )
 
+
 # Initialize models (will download on first run)
 blip_model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b")
-blip_processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
+blip_processor = Blip2Processor.from_pretrained(
+    "Salesforce/blip2-opt-2.7b", use_fast=True
+)
 
 clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14")
-clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14")
+clip_processor = CLIPProcessor.from_pretrained(
+    "openai/clip-vit-large-patch14", use_fast=True
+)
 
 # Define your own categories
 categories = [
