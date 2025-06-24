@@ -23,32 +23,33 @@ blip_processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
 clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14")
 clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14")
 
-# Define your own categories
-categories = [
-    # Nature & Environment
-    "nature",  # Forests, mountains, oceans, etc.
-    "sky",  # Clouds, sunset, night, stars
-    "animals",  # Wildlife, pets, birds
-    # Urban & Man-Made
-    "cityscape",  # Skylines, streets, architecture
-    "architecture",  # Bridges, ruins, buildings
-    # People & Characters
-    "portrait",  # Realistic or stylized people
-    "anime",  # Anime and manga style characters/scenes
-    "fantasy",  # Dragons, elves, mythical creatures
-    "sci_fi",  # Mecha, spaceships, cyberpunk, etc.
-    # Art & Design
-    "abstract",  # Non-representational art
-    "digital_art",  # Stylized illustrations, concept art
-    "minimal",  # Clean, simple, space-efficient
-    # Mood & Style
-    "dark",  # Night, low light, moody
-    "bright",  # Colorful, vibrant
-    "vaporwave",  # Retro-futuristic, glitch, synthwave
-    # Technology & Objects
-    "technology",  # Gadgets, computers, machinery
-    "vehicles",  # Cars, spaceships, motorcycles
-]
+category_map = {
+    "People": "a photo of one or more people",
+    "Animals": "an image of an animal, such as a pet or wildlife",
+    "Nature": "a picture of a natural landscape, like mountains, forests, or oceans",
+    "City": "a photo of a city, urban scene, or architecture",
+    "Objects": "an image of an everyday object, item, or product",
+    "Vehicles": "a photo of a vehicle, like a car, truck, or motorcycle",
+    "Food": "an image of food, a meal, or drinks",
+    "Abstract": "an abstract image or non-representational art",
+    "Art": "a piece of art, a painting, or a sculpture",
+    "Events": "a photo of an event or celebration, like a party or festival",
+    "Documents": "an image of a document, text, or a screenshot",
+    "Outdoor": "a general outdoor scene, such as a park or street",
+    "Indoor": "a general indoor scene, such as a room or office",
+    "Sky": "an image of the sky, clouds, sunset, or stars",
+    "Sports": "a photo of a sport or athletic activity",
+    "Technology": "an image showing technology, gadgets, or computers",
+    "Buildings": "a picture of a building or structure",
+    "Water": "a photo of water, like a river, lake, or ocean",
+    "Plants": "an image of plants, flowers, or greenery",
+    "Other": "an uncategorized image, something that doesn't fit other categories",
+}
+
+# Extract the CLIP-friendly phrases for the model
+clip_categories = list(category_map.values())
+# Create a reverse map to get directory name from CLIP category phrase
+reverse_category_map = {v: k for k, v in category_map.items()}
 
 
 def sanitize_tags(text):
@@ -70,21 +71,25 @@ def classify_category(image):
     image_features = clip_model.get_image_features(**inputs_image)
     image_features = image_features / image_features.norm(dim=-1, keepdim=True)
 
-    inputs_text = clip_processor(text=categories, return_tensors="pt", padding=True)
+    inputs_text = clip_processor(
+        text=clip_categories, return_tensors="pt", padding=True
+    )
     text_features = clip_model.get_text_features(**inputs_text)
     text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 
     similarity = torch.matmul(image_features, text_features.T)
-    # category_idx = similarity.argmax().item()
-    # category_idx = max_idx.item()
     max_score, max_idx = torch.max(similarity, dim=1)
 
-    threshold = 0.3
-    if max_score.item() < threshold:
-        return "uncategorized"
+    # You can still use a threshold if you want a stronger "uncategorized" guard,
+    # or rely solely on the "Other" category if its score is highest.
+    threshold = 0.1  # Adjust based on your testing
+
+    predicted_clip_phrase = clip_categories[max_idx.item()]
+
+    if predicted_clip_phrase == category_map["Other"] or max_score.item() < threshold:
+        return "Other"  # Return the directory name "Other"
     else:
-        # return categories[category_idx]
-        return categories[max_idx.item()]
+        return reverse_category_map[predicted_clip_phrase]
 
 
 def load_existing_data(path):
