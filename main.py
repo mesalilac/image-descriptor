@@ -197,7 +197,7 @@ def get_unique_filename(path, size: str):
     return os.path.join(directory, candidate)
 
 
-def main(folder, yes, metadata_file_path):
+def main(folder, yes, flat, metadata_file_path):
     results = []
     exesting_data = load_existing_data(metadata_file_path)
 
@@ -211,7 +211,7 @@ def main(folder, yes, metadata_file_path):
         if is_cached[0]:
             item = is_cached[1]
             if item is not None:
-                item["file_path"] = full_path  # Update file path
+                image_paths[item["signature"]] = full_path
                 results.append(item)
                 continue
 
@@ -239,7 +239,11 @@ def main(folder, yes, metadata_file_path):
                 old_file_path = image_paths[signature]
 
                 new_file_name = generate_filename(caption, old_file_path)
-                new_directory = os.path.join(folder, category)
+                if flat:
+                    new_directory = folder
+                else:
+                    new_directory = os.path.join(folder, category)
+
                 new_file_path = os.path.join(new_directory, new_file_name)
 
                 new_unique_file_path = get_unique_filename(new_file_path, size)
@@ -265,9 +269,15 @@ if __name__ == "__main__":
         action="store_true",
         help="Skip confirmation prompt for reorganizing images.",
     )
+    parser.add_argument(
+        "-f",
+        "--flat",
+        action="store_true",
+        help="Keep images in the root of the target directory, and don't move them into subdirectories",
+    )
 
     args = parser.parse_args()
     folder_path = os.path.expanduser(args.folder)
     metadata_file_path = os.path.join(folder_path, "wallpaper_metadata.json")
 
-    main(folder_path, args.yes, metadata_file_path)
+    main(folder_path, args.yes, args.flat, metadata_file_path)
