@@ -156,9 +156,12 @@ def process_image(path):
     category = classify_category(image)
     tags = sanitize_tags(caption)
 
+    x, y = image.size
+
     return {
         "signature": blake3_file(path),  # Command is `b3sum` on archlinux
         "file_path": path,
+        "size": f"{x}x{y}",
         "caption": caption,
         "category": category,
         "tags": tags,
@@ -172,9 +175,12 @@ def image_is_cached(data: list[dict], signature: str) -> tuple[bool, dict | None
     return (False, None)
 
 
-def get_unique_filename(path):
+def get_unique_filename(path, size: str):
     directory, filename = os.path.split(path)
     name, ext = os.path.splitext(filename)
+
+    name = f"{name}_{size}{ext}"
+    filename = name
 
     candidate = filename
     counter = 1
@@ -218,12 +224,13 @@ def main(folder, metadata_file_path):
                 old_file_path = ele["file_path"]
                 caption = ele["caption"]
                 category = ele["category"]
+                size = ele["size"]
 
                 new_file_name = generate_filename(caption, old_file_path)
                 new_directory = os.path.join(folder, category)
                 new_file_path = os.path.join(new_directory, new_file_name)
 
-                new_unique_file_path = get_unique_filename(new_file_path)
+                new_unique_file_path = get_unique_filename(new_file_path, size)
 
                 print(f"'{old_file_path}' => '{new_unique_file_path}'")
                 os.makedirs(new_directory, exist_ok=True)
