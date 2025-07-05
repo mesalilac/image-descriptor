@@ -51,6 +51,8 @@ clip_categories = list(category_map.values())
 # Create a reverse map to get directory name from CLIP category phrase
 reverse_category_map = {v: k for k, v in category_map.items()}
 
+image_paths: dict[str, str] = {}
+
 
 def sanitize_tags(text):
     text = re.sub(r"[^\w\s]", "", text.lower())
@@ -158,9 +160,12 @@ def process_image(path):
 
     x, y = image.size
 
+    signature = blake3_file(path)
+
+    image_paths[signature] = path
+
     return {
-        "signature": blake3_file(path),  # Command is `b3sum` on archlinux
-        "file_path": path,
+        "signature": signature,  # Command is `b3sum` on archlinux
         "size": f"{x}x{y}",
         "caption": caption,
         "category": category,
@@ -192,7 +197,7 @@ def get_unique_filename(path, size: str):
     return os.path.join(directory, candidate)
 
 
-def main(folder, metadata_file_path):
+def main(folder, yes, metadata_file_path):
     results = []
     exesting_data = load_existing_data(metadata_file_path)
 
@@ -218,13 +223,20 @@ def main(folder, metadata_file_path):
 
     if len(results) > 0:
         print("Do you want to move images")
-        confirm = input("Confirm? (y/n): ")
+
+        if yes:
+            confirm = "y"
+        else:
+            confirm = input("Confirm? (y/n): ")
+
         if confirm.lower() == "y":
             for ele in results:
-                old_file_path = ele["file_path"]
+                signature = ele["signature"]
                 caption = ele["caption"]
                 category = ele["category"]
                 size = ele["size"]
+
+                old_file_path = image_paths[signature]
 
                 new_file_name = generate_filename(caption, old_file_path)
                 new_directory = os.path.join(folder, category)
@@ -247,9 +259,15 @@ if __name__ == "__main__":
         default="~/Pictures/wallpapers/",
         help="Wallpapers folder",
     )
+    parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Skip confirmation prompt for reorganizing images.",
+    )
 
     args = parser.parse_args()
     folder_path = os.path.expanduser(args.folder)
     metadata_file_path = os.path.join(folder_path, "wallpaper_metadata.json")
 
-    main(folder_path, metadata_file_path)
+    main(folder_path, args.yes, metadata_file_path)
