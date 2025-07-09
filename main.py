@@ -179,14 +179,18 @@ if __name__ == "__main__":
         print(f"Folder '{folder_path}' does not exist!")
         exit(1)
 
-    with tqdm(
-        total=len(os.listdir(folder_path)), desc="Processing images", unit="file"
-    ) as pbar:
-        for file_path in os.listdir(folder_path):
+    images_list = []
+
+    for file in os.listdir(folder_path):
+        if not file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+            continue
+
+        images_list.append(file)
+
+    with tqdm(total=len(images_list), desc="Processing images", unit="file") as pbar:
+        for file_path in images_list:
             pbar.set_description(f"Processing {file_path[:12]}...")
             absolute_file_path = os.path.join(folder_path, file_path)
-            if not file_path.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                continue
 
             image_obj = Image.open(absolute_file_path).convert("RGB")
 
