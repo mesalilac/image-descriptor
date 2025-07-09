@@ -158,7 +158,7 @@ if __name__ == "__main__":
         help="Skip confirmation prompt for reorganizing images.",
     )
     parser.add_argument(
-        "-f",
+        "-F",
         "--flat",
         action="store_true",
         default=False,
