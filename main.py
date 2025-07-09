@@ -145,6 +145,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
+        "-f",
         "--folder",
         type=str,
         default="~/Pictures/wallpapers/",
