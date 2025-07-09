@@ -148,7 +148,7 @@ if __name__ == "__main__":
         "-f",
         "--folder",
         type=str,
-        default="~/Pictures/wallpapers/",
+        required=True,
         help="Wallpapers folder",
     )
     parser.add_argument(
@@ -174,6 +174,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     folder_path = os.path.expanduser(args.folder)
     metadata = Metadata(os.path.join(folder_path, "image_metadata.json"))
+
+    if os.path.exists(folder_path) == False:
+        print(f"Folder '{folder_path}' does not exist!")
+        exit(1)
 
     with tqdm(
         total=len(os.listdir(folder_path)), desc="Processing images", unit="file"
