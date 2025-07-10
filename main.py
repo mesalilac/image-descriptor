@@ -69,12 +69,10 @@ def blake3_file(path: str) -> str:
 
 
 class Metadata:
-    def __init__(self, filename="image_metadata.json"):
+    def __init__(self, filename):
         self.filename = filename
         self.data: dict[str, dict[str, str]] = {}
         self.paths: dict[str, str] = {}
-
-        self.__load()
 
     def put_path(self, signature: str, path: str):
         self.paths[signature] = path
@@ -106,7 +104,7 @@ class Metadata:
         with open(self.filename, "w", encoding="utf-8") as f:
             json.dump(list(self.data.values()), f, indent=4, ensure_ascii=False)
 
-    def __load(self) -> None:
+    def load(self) -> None:
         if not os.path.exists(self.filename):
             return
         with open(self.filename, "r", encoding="utf-8") as f:
@@ -170,66 +168,109 @@ if __name__ == "__main__":
         action="store_true",
         help="Dry run don't save anything just show what's going to happen.",
     )
+    parser.add_argument(
+        "-c",
+        "--cleanup",
+        action="store_true",
+        help="Cleanup image_metadata.json and remove entries that don't exist anymore.",
+    )
 
     args = parser.parse_args()
     folder_path = os.path.expanduser(args.folder)
-    metadata = Metadata(os.path.join(folder_path, "image_metadata.json"))
+    metadata_file_path = os.path.join(folder_path, "image_metadata.json")
+    metadata = Metadata(metadata_file_path)
+    metadata.load()
 
     if os.path.exists(folder_path) == False:
         print(f"Folder '{folder_path}' does not exist!")
         exit(1)
 
-    images_list = []
+    if args.cleanup:
+        print("Cleaning up image_metadata.json")
+        new_metadata = Metadata(metadata_file_path)
+        new_metadata.load()
+        found_signatures = set()
+        found_outdated_entry = False
 
-    for file in os.listdir(folder_path):
-        if not file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-            continue
+        for dirpath, dirnames, filenames in os.walk(folder_path):
+            for filename in filenames:
+                absolute_file_path = os.path.join(dirpath, filename)
 
-        images_list.append(file)
+                image_signature = blake3_file(absolute_file_path)
 
-    with tqdm(total=len(images_list), desc="Processing images", unit="file") as pbar:
-        for file_path in images_list:
-            pbar.set_description(f"Processing {file_path[:12]}...")
-            absolute_file_path = os.path.join(folder_path, file_path)
+                if metadata.data_has_signature(image_signature):
+                    found_signatures.add(image_signature)
 
-            image_obj = Image.open(absolute_file_path).convert("RGB")
+        for key in metadata.data:
+            if key not in found_signatures:
+                found_outdated_entry = True
+                print(f"Removing outdated entry: {key}")
+                new_metadata.data.pop(key)
 
-            image_signature = blake3_file(absolute_file_path)
-            size = f"{image_obj.size[0]}x{image_obj.size[1]}"
-
-            metadata.put_path(image_signature, absolute_file_path)
-
-            if metadata.data_has_signature(image_signature) == False:
-                caption = generate_caption(image_obj)
-                category = classify_category(caption)
-                new_tags = caption + " " + category + " " + size
-                metadata.put_metadata(
-                    image_signature, size, caption, category, new_tags
-                )
-
-            pbar.update(1)
-
-    if args.dry == False:
-        metadata.save()
-
-    print("Do you want to move images")
-
-    if args.yes:
-        confirm = "y"
+        if found_outdated_entry == True:
+            if args.dry == True:
+                print("Dry run, not saving changes")
+            else:
+                print("Saving changes")
+                new_metadata.save()
+        else:
+            print("No outdated entries found")
     else:
-        confirm = input("Confirm? (y/N): ")
+        images_list = []
 
-    if confirm == "Y" or confirm == "y" and args.flat == False:
-        for signature, curr_path in metadata.paths.items():
-            if metadata.data.get(signature):
-                caption = metadata.data[signature]["caption"]
-                category = metadata.data[signature]["category"]
-                new_path = os.path.join(
-                    folder_path,
-                    category,
-                    generate_filename(signature, caption, curr_path),
-                )
-                print(f"'{curr_path}' => '{new_path}'")
-                if args.dry == False:
-                    os.makedirs(os.path.dirname(new_path), exist_ok=True)
-                    shutil.move(curr_path, new_path)
+        for file in os.listdir(folder_path):
+            if not file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                continue
+
+            images_list.append(file)
+
+        with tqdm(
+            total=len(images_list), desc="Processing images", unit="file"
+        ) as pbar:
+            for file_path in images_list:
+                pbar.set_description(f"Processing {file_path[:12]}...")
+                absolute_file_path = os.path.join(folder_path, file_path)
+
+                image_obj = Image.open(absolute_file_path).convert("RGB")
+
+                image_signature = blake3_file(absolute_file_path)
+                size = f"{image_obj.size[0]}x{image_obj.size[1]}"
+
+                metadata.put_path(image_signature, absolute_file_path)
+
+                if metadata.data_has_signature(image_signature) == False:
+                    caption = generate_caption(image_obj)
+                    category = classify_category(caption)
+                    new_tags = caption + " " + category + " " + size
+                    metadata.put_metadata(
+                        image_signature, size, caption, category, new_tags
+                    )
+
+                pbar.update(1)
+
+        if args.dry == True:
+            print("Dry run, not saving metadata")
+        else:
+            metadata.save()
+
+        print("Do you want to move images")
+
+        if args.yes:
+            confirm = "y"
+        else:
+            confirm = input("Confirm? (y/N): ")
+
+        if confirm == "Y" or confirm == "y" and args.flat == False:
+            for signature, curr_path in metadata.paths.items():
+                if metadata.data.get(signature):
+                    caption = metadata.data[signature]["caption"]
+                    category = metadata.data[signature]["category"]
+                    new_path = os.path.join(
+                        folder_path,
+                        category,
+                        generate_filename(signature, caption, curr_path),
+                    )
+                    print(f"'{curr_path}' => '{new_path}'")
+                    if args.dry == False:
+                        os.makedirs(os.path.dirname(new_path), exist_ok=True)
+                        shutil.move(curr_path, new_path)
