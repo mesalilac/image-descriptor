@@ -42,7 +42,6 @@ python main.py -f ~/Pictures/wallpapers
         | - <Category2>
             | - <new file name>.jpg
             | - <new file name>.jpg
-            | - <new file name>.jpg
 ```
 
 ## image_metadata.json
