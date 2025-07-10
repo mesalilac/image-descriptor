@@ -18,15 +18,6 @@ else:
 
 print("---------------------------")
 
-processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
-model = BlipForConditionalGeneration.from_pretrained(
-    "Salesforce/blip-image-captioning-large"
-).to(device)
-
-classifier = pipelines.pipeline(
-    "zero-shot-classification", model="facebook/bart-large-mnli", device=0
-)
-
 
 canidate_lables = [
     "Anime",
@@ -40,7 +31,7 @@ canidate_lables = [
 ]
 
 
-def generate_caption(image_obj: Image) -> str:
+def generate_caption(processor, model, image_obj: Image) -> str:
     inputs = processor(image_obj, return_tensors="pt").to(device)
 
     out = model.generate(**inputs)
@@ -49,7 +40,7 @@ def generate_caption(image_obj: Image) -> str:
     return caption
 
 
-def classify_category(caption: str) -> str:
+def classify_category(classifier, caption: str) -> str:
     classification_results = classifier(caption, canidate_lables, multi_lable=False)
 
     predicted_category = classification_results["labels"][0]
@@ -216,6 +207,16 @@ if __name__ == "__main__":
         else:
             print("No outdated entries found")
     else:
+        processor = BlipProcessor.from_pretrained(
+            "Salesforce/blip-image-captioning-large"
+        )
+        model = BlipForConditionalGeneration.from_pretrained(
+            "Salesforce/blip-image-captioning-large"
+        ).to(device)
+
+        classifier = pipelines.pipeline(
+            "zero-shot-classification", model="facebook/bart-large-mnli", device=0
+        )
         images_list = []
 
         for file in os.listdir(folder_path):
@@ -239,8 +240,8 @@ if __name__ == "__main__":
                 metadata.put_path(image_signature, absolute_file_path)
 
                 if metadata.data_has_signature(image_signature) == False:
-                    caption = generate_caption(image_obj)
-                    category = classify_category(caption)
+                    caption = generate_caption(processor, model, image_obj)
+                    category = classify_category(classifier, caption)
                     new_tags = caption + " " + category + " " + size
                     metadata.put_metadata(
                         image_signature, size, caption, category, new_tags
