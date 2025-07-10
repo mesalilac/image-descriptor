@@ -25,6 +25,16 @@ main.py [-h] [--folder FOLDER] [-y] [-f] [-d]
         | - 5.jpg
 ```
 
+## First install the dependencies
+
+```python
+python -m venv .venv
+source .venv/bin/activate
+pip install .
+```
+
+## Run on target directory
+
 ```python
 python main.py -f ~/Pictures/wallpapers
 ```
